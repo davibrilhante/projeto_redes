@@ -260,7 +260,7 @@ def brdmacScheduler(nNodes, demand, channel, nodelist):
 
 def main():
 	#Defining Variables
-	nNodes = 10
+	nNodes = 11
 	areaSize = 10
 	nodelist = [];#list of nodes
 	random.seed(26)
