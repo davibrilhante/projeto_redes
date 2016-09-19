@@ -3,11 +3,6 @@ import sys
 import math
 import random
 
-'''
-simulation total time = 5e4 slots
-delay threshold = 2e4 slots
-traffic load = arrival_rate * 1000 B * nNodes / transmission_rate
-'''
 pi = 3.14159265
 
 class Node:
@@ -28,7 +23,7 @@ class Node:
 	def beamAperture(self):#returns the angle of each beam
 		return 2*pi/self.nBeams
 
-	def isInside(self, a, b, ret):#returns the beam sector which the node is
+	def isInside(self, a, b):#returns the beam sector which the node is
 		#Euclidian distance between the nodes
 		dist = math.hypot(abs(self.x-a), abs(self.y-b))
 		if (dist > self.radius):
@@ -39,23 +34,7 @@ class Node:
 			if (angle < 0):
 			    angle = (2*pi) + angle
 			sector = int(angle/self.beamAperture())
-		if (ret == None):
-	   		return sector
-		else:
-			return dist
-
-def nodebuffer(schedule, node, threshold):
-	nodebuffer = []
-	
-	for i in range(len(schedule)):
-		slots = 0
-		for j in range(1,len(schedule[i])):
-			if (schedule[i][j][0] == node):
-				for k in range(i):
-					slots = slots + schedule[k][0]
-					#print slots
-				nodebuffer.append([slots, schedule[i][j][1]])
-	return nodebuffer
+	   	return sector
 
 
 def beamIntersection(nodelist, link1, link2):
@@ -111,7 +90,7 @@ def fdmacScheduler(nNodes, demand, nodelist):
 						else:
 							pass
 
-	#print "edges ->",edges[:]
+	print "edges ->",edges[:]
 	schedule = []
 	colors = []
 	visited = []
@@ -134,12 +113,12 @@ def fdmacScheduler(nNodes, demand, nodelist):
 				colors.append([edges[i][0],edges[i][1]])
 				edges.remove([edges[i][0],edges[i][1]])
 				edges.insert(i,[0,0])
-		#print "counter->",counter
+		print "counter->",counter
 		counter = counter+1
 		if (colors==[]):
 			break
 		schedule.append(colors)
-		#print colors[:]
+		print colors[:]
 
 		colors = []
 	#print schedule
@@ -150,8 +129,7 @@ def fdmacScheduler(nNodes, demand, nodelist):
 			if (demand[schedule[i][j][0]][schedule[i][j][1]] > maximo):
 				maximo = demand[schedule[i][j][0]][schedule[i][j][1]]
 		schedule[i].insert(0, maximo)
-	print "FDMAC ->",schedule
-	return schedule
+	print "schedule ->",schedule
 #'''
 
 #funcao de bloqueio ja funciona, so falta dar uma arrumada!
@@ -161,18 +139,18 @@ def blockage(nNodes, channel, rate):
 	#print "Blockage Number ->",NumBlock
 	for i in range(nNodes*nNodes):
 		visited.append(i)
-	#print channel
+	print channel
 	while(NumBlock > 0):
 		blocked = random.choice(visited)
-		#print blocked,
+		print blocked,
 		NumBlock= NumBlock - 1
 		visited.remove(blocked)
 		i = int(blocked/nNodes)
 		j = blocked % nNodes
 		channel[i][j] = 0
 
-	#print
-	#print channel
+	print
+	print channel
 
 #criar brdmacScheduler
 def brdmacScheduler(nNodes, demand, channel, nodelist):
@@ -187,10 +165,9 @@ def brdmacScheduler(nNodes, demand, channel, nodelist):
 			copy.append(demand[i][j])
 			visited.append(0)
 			elected.append(0)
-	#print copy
+	print copy
 
 	runs = nNodes*nNodes
-	#print "channel 2",channel
 	#elegendo os relays
 	for i in range (0, nNodes):
 		temp = []
@@ -198,11 +175,9 @@ def brdmacScheduler(nNodes, demand, channel, nodelist):
 			if ((demand[i][j]!=0)and(channel[i][j]==0)):
 				candidates = []
 				for k in range(nNodes):
-					print "(",i, j,")", k, 
-					print channel[i][k],channel[k][j]
 					if ((channel[i][k] != 0)and(channel[k][j])!=0):
 						candidates.append(k)
-						#print i,"->",k,"->",j
+						print i,"->",k,"->",j
 				temp.append(candidates)
 			else:
 				temp.append(None)
@@ -241,7 +216,6 @@ def brdmacScheduler(nNodes, demand, channel, nodelist):
 				#endfor
 
 				#print "Wc ->", Wc
-				temp =[]
 				for u in range(len(value)):#linha 9: para cada no candidato a relay...
 					Scju = 0
 					#para cada aresta que aponta para esse vertice
@@ -251,9 +225,7 @@ def brdmacScheduler(nNodes, demand, channel, nodelist):
 						Scju = Scju + Wc[(v*nNodes)+value[u]]
 					temp.append(Scju)
 					#end for
-					#print temp
 				Sc = max(temp)#linha 15
-				#print "Sc",Sc
 				#end for
 				#print
 				#print temp.index(Sc), Sc
@@ -263,108 +235,35 @@ def brdmacScheduler(nNodes, demand, channel, nodelist):
 					#Sjr = Sjr + Wc[(j*nNodes)+value[k]]
 					Sjr=Sjr+Wc[(int(i/nNodes)*nNodes)+k]#linha 17
 				#endfor
-				#print "Sjr",Sjr
 				Mj.append(max(Sjr, Sc))
-				copy[i-l+value[j]]=-copy[i]+copy[i-l+value[j]]
-			#end for
-			#elected[i] = min(Mj)
-			#print "temp", temp
-			#print "Mj", Mj
-			#print int(i/nNodes),l, temp.index(min(Mj))
-			elected[i] = relays[int(i/nNodes)][l][Mj.index(min(Mj))]
-			#copy[i]=0
-			#print relays
-			#print "elected",elected[i]
+				#end for
+			elected[i] = Mj.index(min(Mj))
 		#endif
 		elif ((value != None)and(len(value)==1)):
-			elected[i]=value[0]
-			#copy[int(i/nNodes)+elected[i]]=copy[int(i/nNodes)+elected[i]]+copy[i]
-		elif (value == None):#)or(value==[])):
+			elected[i]=value
+		elif (value == None):
 			elected[i]=None
 		i = i+1
 	#fim do while
 
-	#print elected
-	'''
-	print "channel->", channel
-	print "demand ->", demand
+	print elected
 	print "copy ->", copy
-	#print "visited ->", visited
-	'''
-	
-	for i in range(nNodes):
-		copy[i]=copy[i*nNodes:i*nNodes+nNodes]
-	
-	while(len(copy)!=nNodes):
-		copy.remove(copy[nNodes])
-	print copy
-	
-	for i in range(nNodes): temp.append(0)
-	for i in range(nNodes):
-		for j in range(nNodes): copy[i][j]=0
-		for j in range(nNodes):
-			if(elected[(i*nNodes) + j] != None):
-				copy[i][elected[(i*nNodes) + j]] = copy[i][elected[(i*nNodes) + j]]+demand[i][j]#+demand[i][elected[(i*nNodes) + j]]
-				copy[i][j]=0
-			else:
-				copy[i][j]=copy[i][j]+demand[i][j]
-	print copy
-		
-	
-	#FAZER O ESCALONAMENTO!!!
-	return fdmacScheduler(nNodes, copy, nodelist)
-	'''
-	counter = 0
-	visited = []
-	while (len(visited)<nNodes*nNodes-1):
-		counter = counter + 1
-		for k in range(runs):
-			if (channel[int(k/nNodes)][k%nNodes]!=0):
-				#demanda dos enlaces normalizada pela velocidade do enlace
-				Wc.append(math.ceil(copy[k]/channel[int(k/nNodes)][k%nNodes]))#linha 7
-			else:#preciso disso para nao gerar problemas com divisao por 0
-				Wc.append(0)
-		Vt = []
-		Et = []
-		while(len(Et)<math.floor(nNodes/2)):
-			eij = Wc.index(max(Wc))
-			if(Vt.count(eij)==0):
-				Vt.append(eij)
-		#fim do while
-	'''	
+	print "visited ->", visited
 
-	#print "BRDMAC ->", final
-	#return final
 #criar minha funcao: daviSinistroSchedule()
 
 #criar funcao que calcula o delay
-def delayCalc(schedule):
-	delay = 0
-	avg_delay = 0
-	for i in range (len(schedule)-1):
-		for j in range(i):
-			delay= delay + schedule[i][0]
 
-	avg_delay = delay/len(schedule)
-	return avg_delay
-
-#Gerador de trafego
-def poissontraffic(nNodes, rate):
-	packets = round(random.random()*20,1)*nNodes/rate*2
-	return packets
 #criar funcao que calcula a taxa de sucesso
 
-
-#criar funcao que calcula o Jain's fairness Index com relacao ao delay
+#criar funcao que calcula o Jain's fairness Index
 
 def main():
 	#Defining Variables
-	nNodes = 20
+	nNodes = 11
 	areaSize = 10
 	nodelist = [];#list of nodes
 	random.seed(26)
-	load = 0
-	charge = 4.5
 	#Randomic Position of the nodes
 	for i in range (nNodes):
 		nodelist.append(Node(random.randint(0,areaSize),random.randint(0,areaSize), 10))
@@ -377,44 +276,18 @@ def main():
 	for i in range (0, nNodes):
 		for j in range (0, nNodes):
 			if (i != j):
-				if (nodelist[i].isInside(nodelist[j].x, nodelist[j].y,None)):
-					if (nodelist[i].isInside(nodelist[j].x, nodelist[j].y,True) >=7):
-						channel[i][j] = 1 #random.randint(1,2)#random.uniform(0, 5)
-					else:
-						channel[i][j] = 2
-					demand[i][j] = poissontraffic(nNodes, channel[i][j])*charge#math.floor(random.uniform(0, 4.5))#*random.uniform(0,channel[i][j]))
-					load = load + demand[i][j]
-					#print poissontraffic(nNodes, channel[i][j])
+				if (nodelist[i].isInside(nodelist[j].x, nodelist[j].y)):
+					channel[i][j] = random.randint(0,5)#random.uniform(0, 5)
+					demand[i][j] = math.floor(random.uniform(0, 4.5))#*random.uniform(0,channel[i][j]))
 
-	print "demand", demand
+	print "demand",demand[:][:]
 	print "channel", channel
 
-	blockage(nNodes, channel, 0.15)#ja funciona!
-	#print "channel 2 =>", channel
-	fdmac = []
-	brdmac = []
-	fdmac = fdmacScheduler(nNodes, demand, nodelist)
-	brdmac = brdmacScheduler(nNodes, demand, channel, nodelist)
-	
-	print
-	print "FDMAC =>\t", fdmac,
-	print
-	print "BRDMAC =>\t",brdmac
-	
-	avg_delay = delayCalc(fdmac)
-	print len(fdmac), len(brdmac)
-	print avg_delay
-	
-	
+	#blockage(nNodes, channel, 0.5)#ja funciona!
 
-	avg_delay = 0
-	avg_delay = delayCalc(brdmac)
-	print avg_delay
+	fdmacScheduler(nNodes, demand, nodelist)
+	brdmacScheduler(nNodes, demand, channel, nodelist)
 
-	print nodebuffer(fdmac,3,1000)
-	print nodebuffer(brdmac,3,1000)
 
-	print load
-	
 if __name__ == "__main__":
     sys.exit(main())
