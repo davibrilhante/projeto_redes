@@ -44,7 +44,7 @@ class Node:
 		else:
 			return dist
 
-def nodebuffer(schedule, node, threshold):
+def nodebuffer(schedule, node):#, demand, threshold):
 	nodebuffer = []
 	
 	for i in range(len(schedule)):
@@ -60,17 +60,17 @@ def nodebuffer(schedule, node, threshold):
 
 def beamIntersection(nodelist, link1, link2):
 	sector10 = nodelist[link1[0]].inInside(nodelist[link1[1]].x,nodelist[link1[1]].y)
-	sectora =  nodelist[link1[0]].inInside(nodelist[link2[0]].x,nodelist[link2[0]].y)
+	#sectora =  nodelist[link1[0]].inInside(nodelist[link2[0]].x,nodelist[link2[0]].y)
 	sectorb =  nodelist[link1[0]].inInside(nodelist[link2[1]].x,nodelist[link2[1]].y)
 
-	sector11 = nodelist[link1[1]].inInside(nodelist[link1[0]].x,nodelist[link1[0]].y)
-	sectorc =  nodelist[link1[1]].inInside(nodelist[link2[0]].x,nodelist[link2[0]].y)
-	sectord =  nodelist[link1[1]].inInside(nodelist[link2[1]].x,nodelist[link2[1]].y)
+	#sector11 = nodelist[link1[1]].inInside(nodelist[link1[0]].x,nodelist[link1[0]].y)
+	#sectorc =  nodelist[link1[1]].inInside(nodelist[link2[0]].x,nodelist[link2[0]].y)
+	#sectord =  nodelist[link1[1]].inInside(nodelist[link2[1]].x,nodelist[link2[1]].y)
 
 	sector20 = nodelist[link2[0]].inInside(nodelist[link2[1]].x,nodelist[link2[1]].y)
-	sectore =  nodelist[link2[0]].inInside(nodelist[link1[0]].x,nodelist[link1[0]].y)
+	#sectore =  nodelist[link2[0]].inInside(nodelist[link1[0]].x,nodelist[link1[0]].y)
 	sectorf =  nodelist[link2[0]].inInside(nodelist[link1[1]].x,nodelist[link1[1]].y)
-
+	'''
 	sector21 = nodelist[link2[1]].inInside(nodelist[link2[0]].x,nodelist[link2[0]].y)
 	sectorg =  nodelist[link2[1]].inInside(nodelist[link1[0]].x,nodelist[link1[0]].y)
 	sectorh =  nodelist[link2[1]].inInside(nodelist[link1[1]].x,nodelist[link1[1]].y)
@@ -82,6 +82,9 @@ def beamIntersection(nodelist, link1, link2):
 	elif((sector20 == sectore) or (sector20 == sectorf)):
 		return True
 	elif((sector21 == sectorg) or (sector21 == sectorh)):
+		return True
+	'''
+	if((sector10 == sectorb) or (sector20 == sectorf)):
 		return True
 
 	return False
@@ -150,7 +153,9 @@ def fdmacScheduler(nNodes, demand, nodelist):
 			if (demand[schedule[i][j][0]][schedule[i][j][1]] > maximo):
 				maximo = demand[schedule[i][j][0]][schedule[i][j][1]]
 		schedule[i].insert(0, maximo)
-	print "FDMAC ->",schedule
+
+	
+	#print "FDMAC ->",schedule
 	return schedule
 #'''
 
@@ -175,7 +180,7 @@ def blockage(nNodes, channel, rate):
 	#print channel
 
 #criar brdmacScheduler
-def brdmacScheduler(nNodes, demand, channel, nodelist):
+def brdmacScheduler(nNodes, demand, channel, nodelist, relayedpkts):
 	copy = []
 	edges = []
 	visited = []
@@ -198,8 +203,8 @@ def brdmacScheduler(nNodes, demand, channel, nodelist):
 			if ((demand[i][j]!=0)and(channel[i][j]==0)):
 				candidates = []
 				for k in range(nNodes):
-					print "(",i, j,")", k, 
-					print channel[i][k],channel[k][j]
+					#print "(",i, j,")", k, 
+					#print channel[i][k],channel[k][j]
 					if ((channel[i][k] != 0)and(channel[k][j])!=0):
 						candidates.append(k)
 						#print i,"->",k,"->",j
@@ -208,7 +213,7 @@ def brdmacScheduler(nNodes, demand, channel, nodelist):
 				temp.append(None)
 		relays.append(temp)
 
-	print "relays ->",relays
+	#print "relays ->",relays
 	#copy.sort(reverse=True)#ainda nao preciso ordenar de forma nao crescente
 	Scju = []
 	i = 0
@@ -297,7 +302,7 @@ def brdmacScheduler(nNodes, demand, channel, nodelist):
 	
 	while(len(copy)!=nNodes):
 		copy.remove(copy[nNodes])
-	print copy
+	#print copy
 	
 	for i in range(nNodes): temp.append(0)
 	for i in range(nNodes):
@@ -305,10 +310,11 @@ def brdmacScheduler(nNodes, demand, channel, nodelist):
 		for j in range(nNodes):
 			if(elected[(i*nNodes) + j] != None):
 				copy[i][elected[(i*nNodes) + j]] = copy[i][elected[(i*nNodes) + j]]+demand[i][j]#+demand[i][elected[(i*nNodes) + j]]
+				relayedpkts[0] = relayedpkts[0] + demand[i][j]
 				copy[i][j]=0
 			else:
 				copy[i][j]=copy[i][j]+demand[i][j]
-	print copy
+	#print copy
 		
 	
 	#FAZER O ESCALONAMENTO!!!
@@ -335,86 +341,228 @@ def brdmacScheduler(nNodes, demand, channel, nodelist):
 
 	#print "BRDMAC ->", final
 	#return final
-#criar minha funcao: daviSinistroSchedule()
+
 
 #criar funcao que calcula o delay
-def delayCalc(schedule):
+def delayCalc(nNodes, schedule, demand):
 	delay = 0
+	pkts = 0
 	avg_delay = 0
 	for i in range (len(schedule)-1):
 		for j in range(i):
-			delay= delay + schedule[i][0]
+			delay= delay + schedule[i][0]#[j][0]
 
-	avg_delay = delay/len(schedule)
+	#for i in range (nNodes):
+	#	for j in range(nNodes):
+	#		pkts = pkts + demand[i][j]
+
+	avg_delay = delay/len(schedule)#pkts
 	return avg_delay
 
 #Gerador de trafego
 def poissontraffic(nNodes, rate):
-	packets = round(random.random()*20,1)*nNodes/rate*2
+	packets = round(random.random()*10,1)*nNodes/rate*2
 	return packets
-#criar funcao que calcula a taxa de sucesso
 
+#criar funcao que calcula a taxa de sucesso
+#def deliveryrate (schedule, threshold):
+	
 
 #criar funcao que calcula o Jain's fairness Index com relacao ao delay
+def fairnessindex(nNodes, resource):
+	num = 0
+	den = 0
+	for i in range(nNodes):
+		num = num + resource[i]
+		den = den + math.pow(resource[i],2)
+	fairness = math.pow(num, 2)/(nNodes*den)
+	return fairness
 
 def main():
+	
 	#Defining Variables
-	nNodes = 20
+	nNodes = int(sys.argv[1])#10
 	areaSize = 10
 	nodelist = [];#list of nodes
-	random.seed(26)
+	random.seed(int(sys.argv[5]))#26)
 	load = 0
-	charge = 4.5
+	charge = float(sys.argv[3])#4.5
+	rate = float(sys.argv[4])
 	#Randomic Position of the nodes
 	for i in range (nNodes):
 		nodelist.append(Node(random.randint(0,areaSize),random.randint(0,areaSize), 10))
-		nodelist[i].setBeam(4)
+		nodelist[i].setBeam(int(sys.argv[2]))
 
+	drate_f = 0 #delivery rate fdmac
+	drate_b = 0 #delivery rate brdmac
+	delayf = 0
+	delayb = 0
+	threshold = 1.6e4 #limite de permanencia no buffer
+	relayedpkts = [0] #Portion of the packets to be relayed
 
-	demand = [[0 for i in range(nNodes)] for j in range(nNodes)]
-	channel = [[0 for i in range(nNodes)] for j in range(nNodes)]
-	#randomic generation of the traffic and channel
-	for i in range (0, nNodes):
-		for j in range (0, nNodes):
-			if (i != j):
-				if (nodelist[i].isInside(nodelist[j].x, nodelist[j].y,None)):
-					if (nodelist[i].isInside(nodelist[j].x, nodelist[j].y,True) >=7):
-						channel[i][j] = 1 #random.randint(1,2)#random.uniform(0, 5)
-					else:
-						channel[i][j] = 2
-					demand[i][j] = poissontraffic(nNodes, channel[i][j])*charge#math.floor(random.uniform(0, 4.5))#*random.uniform(0,channel[i][j]))
-					load = load + demand[i][j]
-					#print poissontraffic(nNodes, channel[i][j])
-
-	print "demand", demand
-	print "channel", channel
-
-	blockage(nNodes, channel, 0.15)#ja funciona!
-	#print "channel 2 =>", channel
 	fdmac = []
 	brdmac = []
-	fdmac = fdmacScheduler(nNodes, demand, nodelist)
-	brdmac = brdmacScheduler(nNodes, demand, channel, nodelist)
+	buffer_f = []
+	buffer_b = []
+	avgdelayf = [0 for i in range(nNodes)]
+	avgdelayb = [0 for i in range(nNodes)]
+	demand = [[0 for i in range(nNodes)] for j in range(nNodes)]
+	channel = [[0 for i in range(nNodes)] for j in range(nNodes)]
+	copyf = [[0 for i in range(nNodes)] for j in range(nNodes)]
+	copyb = [[0 for i in range(nNodes)] for j in range(nNodes)]
+	#randomic generation of the traffic and channel
+	z = 0
+	while(load < 5e4):
+		for i in range (0, nNodes):
+			for j in range (0, nNodes):
+				if (i != j):
+					if (nodelist[i].isInside(nodelist[j].x, nodelist[j].y,None)):
+						if (nodelist[i].isInside(nodelist[j].x, nodelist[j].y,True) >=7):
+							channel[i][j] = 1 #random.randint(1,2)#random.uniform(0, 5)
+						else:
+							channel[i][j] = 2
+						demand[i][j] = poissontraffic(nNodes, channel[i][j])*charge
+						#COMO O FDMAC NAO FAZ RELAY, SE NAO ENVIOU UM PACOTE, ELE FICA PARA
+						#O PROXIMO SCHEDULING
+						copyf[i][j] = copyf[i][j] + demand[i][j]
+						copyb[i][j] = demand[i][j]#+copyb[i][j]
+						#math.floor(random.uniform(0, 4.5))#*random.uniform(0,channel[i][j]))
+						load = load + demand[i][j]
+						#print poissontraffic(nNodes, channel[i][j])
 	
-	print
-	print "FDMAC =>\t", fdmac,
-	print
-	print "BRDMAC =>\t",brdmac
-	
-	avg_delay = delayCalc(fdmac)
-	print len(fdmac), len(brdmac)
-	print avg_delay
-	
-	
+		blockage(nNodes, channel, rate)#ja funciona!
 
-	avg_delay = 0
-	avg_delay = delayCalc(brdmac)
-	print avg_delay
+		fdmac = fdmacScheduler(nNodes, copyf, nodelist)
+		brdmac = brdmacScheduler(nNodes, copyb, channel, nodelist, relayedpkts)
+		print brdmac
+		delayf = delayf + delayCalc(nNodes, fdmac, demand)
+		delayb = delayb + delayCalc(nNodes, brdmac, demand)
+		
+		for n in range(nNodes):
+			temp = []
+			if(len(buffer_f) < nNodes):
+				buffer_f.append(nodebuffer(fdmac,n))
+			else:
+				temp = nodebuffer(fdmac,n)
+				#SE O PACOTER FICOU DA RODADA ANTERIOR INCREMENTAR O BUFFER
+				#COM O PREVISTO PARA ESSA RODADA		
+				counter = len(temp)
+				m = 0
+				#print len(buffer_f[n]), len(temp)
+				for i in range(len(buffer_f[n])):
+					counter = len(temp)
+					m=0										
+					while(counter > 0):
+						#print n, m, i
+						if(buffer_f[n][i][1] == temp[m][1]):
+							#SE TIVER PACOTE PARA UM DESTINO AINDA NO BUFFER, SOMAR A CAPACIDADE
+							buffer_f[n][i][0] = buffer_f[n][i][0] + temp[m][0]
+							temp.remove(temp[m])
+							counter = counter - 1
+						else:
+							m = m+1
+							counter = counter - 1
+				buffer_f[n] = buffer_f[n]+temp
 
-	print nodebuffer(fdmac,3,1000)
-	print nodebuffer(brdmac,3,1000)
+			if(len(buffer_b) < nNodes):
+				buffer_b.append(nodebuffer(brdmac,n))
+			else:
+				temp = nodebuffer(brdmac,n)
+				buffer_b[n] = buffer_b[n] + temp
+			den = 0
+			for i in range(len(buffer_b[n])):
+				avgdelayb[n] = avgdelayb[n] + buffer_b[n][i][0]
+				den = den + copyb[n][buffer_b[n][i][1]]
+			if(den!=0):
+				avgdelayb[n] = avgdelayb[n]/den
+			
+			for i in range(len(buffer_f[n])):
+				avgdelayf[n] = avgdelayf[n] + buffer_f[n][i][0]
+				den = den + copyf[n][buffer_f[n][i][1]]
+			if(den!=0):
+				avgdelayf[n] = avgdelayf[n]/den
+		print buffer_b
+		for n in range(nNodes):
+			for m in range(nNodes):
+				if (channel[n][m]!=0):
+					#SE O PACOTE PODE SER ENVIADO ELE NAO INFLUENCIA NO PROXIMO SCHEDULING
+					copyf[n][m]=0	
 
-	print load
+		for n in range(nNodes):
+			counter = len(buffer_f[n])
+			m = 0
+			while(counter>0):
+				if(copyf[n][buffer_f[n][m][1]] == 0):
+					#PACOTE ENVIADO, LIMPAR O BUFFER
+					buffer_f[n].remove(buffer_f[n][m])
+					counter = counter -1
+				else:
+					m = m + 1
+					counter = counter -1
+
+		for n in range(nNodes):
+			counter = len(buffer_b[n])
+			m = 0
+			while(counter>0):
+				if(copyf[n][buffer_b[n][m][1]] == 0):
+					#PACOTE ENVIADO, LIMPAR O BUFFER
+					buffer_b[n].remove(buffer_b[n][m])
+					counter = counter -1
+				else:
+					m = m + 1
+					counter = counter -1
+
+		for n in range(nNodes):
+			counter = len(buffer_f[n])
+			m = 0
+			while(counter>0):
+				#SE O PACOTE FICOU NO BUFFER POR MUITO TEMPO ELE E DESCARTADO
+				if (buffer_f[n][m][0]>threshold):
+					#DIMINUI A TAXA DE ENTREGA
+					drate_f = drate_f + copyf[n][buffer_f[n][m][1]]
+					#DESCARTA
+					copyf[n][buffer_f[n][m][1]]=0
+					#REMOVE DO BUFFER
+					buffer_f[n].remove(buffer_f[n][m])
+					counter = counter -1
+				else:
+					m = m + 1
+					counter = counter -1
+
+		for n in range(nNodes):
+			counter = len(buffer_b[n])
+			m = 0
+			while(counter>0):
+				if (buffer_b[n][m][0]>threshold):
+					drate_b = drate_b + copyb[n][buffer_b[n][m][1]]
+					copyb[n][buffer_b[n][m][1]]=0
+					buffer_b[n].remove(buffer_b[n][m])
+					counter = counter -1
+				else:
+					m = m + 1
+					counter = counter -1
+
+		z = z+1
+
+	for i in range(nNodes):
+		avgdelayb[i] = avgdelayb[i]/z
+		avgdelayf[i] = avgdelayf[i]/z
+
+	print avgdelayb,"\n",avgdelayf
+
+	drate_b = (load - drate_b)/load
+	drate_f = (load - drate_f)/load
+	relayedpkts[0] = relayedpkts[0]/load
+	delayf = delayf/z
+	delayb = delayb/z
 	
+	print drate_b
+	print drate_f
+	print relayedpkts[0]
+	print delayf
+	print delayb
+	print fairnessindex(nNodes, avgdelayb)
+	print fairnessindex(nNodes, avgdelayf)
+		
 if __name__ == "__main__":
     sys.exit(main())
